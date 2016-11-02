@@ -1,0 +1,111 @@
+<#include "/macro.include"/>
+<#assign className = table.className>
+<#assign classNameFirstLower = table.classNameFirstLower>
+<#assign classNameLowerCase = table.classNameLowerCase>
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<#macro mapperEl value>${r"#{"}${value}}</#macro>
+<mapper namespace="${basepackage}.${subpackage}.dao.${className}Dao">
+
+	<resultMap id="BaseResultMap" type="${basepackage}.${subpackage}.po.${className}Entity">
+        <#list table.columns as column>
+		<#if column.pk>
+			<id property="${column.columnNameLower}" column="${column.sqlName}" jdbcType="${column.jdbcSqlTypeName}"/>
+		</#if>
+		<#if !column.pk>
+			<result property="${column.columnNameLower}" column="${column.sqlName}" jdbcType="${column.jdbcSqlTypeName}"/>
+		</#if>
+		</#list>
+	</resultMap>
+	
+	<!-- 用于select查询公用抽取的列 -->
+	<sql id="Base_Column_List">
+		<#list table.columns as column>${column.sqlName}<#if column_has_next>,</#if></#list>
+	</sql>
+
+    <insert id="save" useGeneratedKeys="true" keyProperty="id"
+        parameterType="${basepackage}.${subpackage}.po.${className}Entity">
+        insert into ${table.sqlName}
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <#list table.columns as column>
+            <if test="${column.columnNameFirstLower} != null">
+                ${column.sqlName},
+            </if>
+            </#list>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+        <#list table.columns as column>
+        <if test="${column.columnNameFirstLower} != null">
+            ${r'#{'}${column.columnNameFirstLower}, jdbcType=${column.jdbcSqlTypeName}${r'},'}
+        </if>
+        </#list>
+        </trim>
+    </insert>
+
+    <delete id="delete" parameterType="long">
+        delete from ${table.sqlName}
+        where
+            id = <@mapperEl "id"/>
+    </delete>
+
+    <update id="update" parameterType="${basepackage}.${subpackage}.po.${className}Entity">
+        update ${table.sqlName}
+        <set>
+            <#list table.notPkColumns as column>
+            <if test="${column.columnNameFirstLower} != null">
+                ${column.sqlName} = ${r'#{'}${column.columnNameFirstLower}, jdbcType=${column.jdbcSqlTypeName} ${r'}'},
+            </if>
+        </#list>
+        </set>
+        where
+            id = <@mapperEl "id"/>
+    </update>
+
+    <select id="query" parameterType="long" resultMap="BaseResultMap">
+		select
+			<include refid="Base_Column_List" />
+		from
+			${table.sqlName}
+		where
+			id = <@mapperEl "id"/>
+        and
+            deleted = 0
+        and
+            disabled = 0
+	</select>
+    <select id="queryList" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from ${table.sqlName}
+        where
+            deleted = 0
+        and
+            disabled = 0
+        <#list table.columns as column>
+        <if test="${column.columnNameFirstLower} != null">
+            and ${column.sqlName} = ${r'#{'}${column.columnNameFirstLower}, jdbcType=${column.jdbcSqlTypeName} ${r'}'}
+        </if>
+        </#list>
+        <if test="orderby != null">
+        order by ${r'${orderby} ${orderdir}'}
+        </if>
+        <if test="start != null and pageSize != null">
+        limit ${r'${start}, ${pageSize}'}
+        </if>
+    </select>
+
+	<select id="queryCount" resultType="int">
+		select count(*)
+		from ${table.sqlName}
+		where
+            deleted = 0
+        and
+            disabled = 0
+		<#list table.columns as column>
+		  <if test="${column.columnNameFirstLower} != null">
+			and ${column.sqlName} = ${r'#{'}${column.columnNameFirstLower}, jdbcType=${column.jdbcSqlTypeName} ${r'}'}
+		  </if>
+		</#list>
+	</select>
+
+</mapper>
